@@ -12,3 +12,7 @@
 node_modules/
 src/main/frontend/generated/
 vite.generated.ts
+/types.d.ts
+/package-lock.json
+/vite.generated.js
+/vite.generated.js.map
