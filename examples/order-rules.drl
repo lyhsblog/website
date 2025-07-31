@@ -1,0 +1,110 @@
+package cc.fss.vaadin.drools.rules;
+
+import cc.fss.vaadin.drools.model.Order;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+// 规则1: VIP客户折扣
+rule "VIP Customer Discount"
+when
+    $order : Order(customerType == "VIP", amount > 500)
+then
+    $order.setDiscount(new BigDecimal("0.10"));
+    $order.setDiscountReason("VIP客户折扣");
+    System.out.println("应用VIP客户折扣: " + $order.getOrderId());
+end
+
+// 规则2: Premium客户折扣
+rule "Premium Customer Discount"
+when
+    $order : Order(customerType == "PREMIUM", amount > 1000)
+then
+    $order.setDiscount(new BigDecimal("0.15"));
+    $order.setDiscountReason("Premium客户折扣");
+    System.out.println("应用Premium客户折扣: " + $order.getOrderId());
+end
+
+// 规则3: 普通客户大额订单折扣
+rule "Regular Customer Large Order Discount"
+when
+    $order : Order(customerType == "REGULAR", amount > 2000)
+then
+    $order.setDiscount(new BigDecimal("0.05"));
+    $order.setDiscountReason("普通客户大额订单折扣");
+    System.out.println("应用普通客户大额订单折扣: " + $order.getOrderId());
+end
+
+// 规则4: 圣诞季特别折扣
+rule "Christmas Season Special Discount"
+when
+    $order : Order(amount > 1000)
+    eval(LocalDateTime.now().getMonthValue() == 12)
+then
+    BigDecimal currentDiscount = $order.getDiscount() != null ? $order.getDiscount() : BigDecimal.ZERO;
+    BigDecimal christmasDiscount = new BigDecimal("0.20");
+    $order.setDiscount(currentDiscount.add(christmasDiscount));
+    $order.setDiscountReason($order.getDiscountReason() != null ?
+        $order.getDiscountReason() + " + 圣诞季特别折扣" : "圣诞季特别折扣");
+    System.out.println("应用圣诞季特别折扣: " + $order.getOrderId());
+end
+
+// 规则5: 新客户首单优惠
+rule "New Customer First Order Discount"
+when
+    $order : Order(customerId matches "NEW-.*", amount > 100)
+then
+    $order.setDiscount(new BigDecimal("0.25"));
+    $order.setDiscountReason("新客户首单优惠");
+    System.out.println("应用新客户首单优惠: " + $order.getOrderId());
+end
+
+// 规则6: 工作日订单优惠
+rule "Weekday Order Discount"
+when
+    $order : Order(amount > 500)
+    eval(LocalDateTime.now().getDayOfWeek().getValue() <= 5) // 周一到周五
+then
+    BigDecimal currentDiscount = $order.getDiscount() != null ? $order.getDiscount() : BigDecimal.ZERO;
+    BigDecimal weekdayDiscount = new BigDecimal("0.03");
+    $order.setDiscount(currentDiscount.add(weekdayDiscount));
+    $order.setDiscountReason($order.getDiscountReason() != null ?
+        $order.getDiscountReason() + " + 工作日订单优惠" : "工作日订单优惠");
+    System.out.println("应用工作日订单优惠: " + $order.getOrderId());
+end
+
+// 规则7: 订单金额验证
+rule "Order Amount Validation"
+when
+    $order : Order(amount <= 0)
+then
+    throw new IllegalArgumentException("订单金额必须大于0: " + $order.getOrderId());
+end
+
+// 规则8: 客户类型验证
+rule "Customer Type Validation"
+when
+    $order : Order(customerType not in ("REGULAR", "VIP", "PREMIUM"))
+then
+    throw new IllegalArgumentException("无效的客户类型: " + $order.getCustomerType());
+end
+
+// 规则9: 折扣上限控制
+rule "Discount Cap Control"
+when
+    $order : Order(discount > 0.50) // 折扣超过50%
+then
+    $order.setDiscount(new BigDecimal("0.50"));
+    $order.setDiscountReason($order.getDiscountReason() + " (折扣上限50%)");
+    System.out.println("应用折扣上限控制: " + $order.getOrderId());
+end
+
+// 规则10: 订单处理完成通知
+rule "Order Processing Complete"
+when
+    $order : Order()
+    eval($order.getDiscount() != null)
+then
+    System.out.println("订单处理完成: " + $order.getOrderId() +
+                      ", 最终折扣: " + $order.getDiscount() +
+                      ", 原因: " + $order.getDiscountReason());
+end

@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  kie-server:
+    image: jboss/kie-server-showcase:8.44.0.Final
+    container_name: kie-server
+    ports:
+      - "8080:8080"
+    environment:
+      - KIE_SERVER_USER=kie-server
+      - KIE_SERVER_PASSWORD=kie-server1!
+      - KIE_SERVER_LOCATION=http://localhost:8080/kie-server/services/rest/server
+      - KIE_SERVER_CONTEXT=/kie-server
+      - KIE_SERVER_ID=kie-server-1
+      - KIE_SERVER_MODE=PRODUCTION
+      - KIE_SERVER_BYPASS_AUTH_USER=true
+      - KIE_SERVER_MANAGED=true
+      - KIE_SERVER_STARTUP_STRATEGY=LocalContainersStartupStrategy
+    volumes:
+      - kie-server-data:/opt/jboss/wildfly/standalone/data
+      - kie-server-logs:/opt/jboss/wildfly/standalone/log
+    networks:
+      - kie-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/kie-server/services/rest/server"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  kie-workbench:
+    image: jboss/kie-workbench-showcase:8.44.0.Final
+    container_name: kie-workbench
+    ports:
+      - "8081:8080"
+    environment:
+      - KIE_ADMIN_USER=admin
+      - KIE_ADMIN_PASSWORD=admin
+      - KIE_SERVER_USER=kie-server
+      - KIE_SERVER_PASSWORD=kie-server1!
+      - KIE_SERVER_LOCATION=http://kie-server:8080/kie-server/services/rest/server
+      - KIE_SERVER_CONTEXT=/kie-server
+      - KIE_SERVER_ID=kie-server-1
+      - KIE_SERVER_MODE=PRODUCTION
+      - KIE_SERVER_BYPASS_AUTH_USER=true
+      - KIE_SERVER_MANAGED=true
+      - KIE_SERVER_STARTUP_STRATEGY=LocalContainersStartupStrategy
+    volumes:
+      - kie-workbench-data:/opt/jboss/wildfly/standalone/data
+      - kie-workbench-logs:/opt/jboss/wildfly/standalone/log
+    networks:
+      - kie-network
+    depends_on:
+      - kie-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/kie-wb"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # 可选：添加数据库支持
+  postgresql-kie:
+    image: postgres:13
+    container_name: postgresql-kie
+    environment:
+      POSTGRES_DB: kie
+      POSTGRES_USER: kie
+      POSTGRES_PASSWORD: kie123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgresql-kie-data:/var/lib/postgresql/data
+    networks:
+      - kie-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kie -d kie"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  kie-server-data:
+    driver: local
+  kie-server-logs:
+    driver: local
+  kie-workbench-data:
+    driver: local
+  kie-workbench-logs:
+    driver: local
+  postgresql-kie-data:
+    driver: local
+
+networks:
+  kie-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
